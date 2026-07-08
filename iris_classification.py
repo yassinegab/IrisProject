@@ -17,7 +17,8 @@ import matplotlib.patches as mpatches
 import seaborn as sns
 
 from sklearn.datasets import load_iris
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier, plot_tree
@@ -256,13 +257,116 @@ plt.close()
 print("  Saved -> knn_k_selection.png")
 
 
+# ============================================================
+# STEP 5 -- CROSS-VALIDATION (5-Fold Stratified)
+# ============================================================
+print("\n" + "=" * 60)
+print("  STEP 5 -- 5-FOLD CROSS-VALIDATION")
+print("=" * 60)
+print("""
+  Cross-validation trains/tests the model on 5 different
+  subsets of the full dataset, giving a more robust estimate
+  of generalisation performance than a single split.
+""")
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+cv_models = {
+    "K-Nearest Neighbors (k=5)": KNeighborsClassifier(n_neighbors=5),
+    "Decision Tree":             DecisionTreeClassifier(max_depth=4, random_state=42),
+    "Logistic Regression":       LogisticRegression(max_iter=500, random_state=42),
+}
+
+cv_results = {}
+X_full = iris.data
+y_full = iris.target
+
+for name, model in cv_models.items():
+    # Wrap in a Pipeline so scaling is re-fit on each fold (prevents data leakage)
+    pipe = Pipeline([
+        ("scaler", StandardScaler()),
+        ("clf",    model),
+    ])
+    scores = cross_val_score(pipe, X_full, y_full, cv=cv, scoring="accuracy")
+    cv_results[name] = scores
+
+    single_acc = results[name]["accuracy"] * 100
+    print(f"  {name}")
+    print(f"    Single split accuracy  : {single_acc:.2f}%")
+    print(f"    CV fold scores         : {[f'{s*100:.2f}%' for s in scores]}")
+    print(f"    CV mean +/- std        : {scores.mean()*100:.2f}% +/- {scores.std()*100:.2f}%")
+    diff = scores.mean()*100 - single_acc
+    direction = "higher" if diff > 0 else "lower" if diff < 0 else "identical"
+    print(f"    CV mean vs single split: {abs(diff):.2f}% {direction}")
+    print()
+
+# -- Cross-validation comparison plot --------------------------
+fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+fig.suptitle("Cross-Validation vs Single Train/Test Split", fontsize=14, fontweight="bold")
+
+model_names_short = ["KNN", "Decision Tree", "Log. Reg."]
+x = np.arange(len(model_names_short))
+width = 0.35
+
+# Left: grouped bar chart
+ax = axes[0]
+single_accs = [results[n]["accuracy"] * 100 for n in cv_models]
+cv_means     = [cv_results[n].mean() * 100 for n in cv_models]
+cv_stds      = [cv_results[n].std()  * 100 for n in cv_models]
+
+bars1 = ax.bar(x - width/2, single_accs, width, label="Single Split (80/20)",
+               color="#6C63FF", edgecolor="white", alpha=0.9)
+bars2 = ax.bar(x + width/2, cv_means, width, label="5-Fold CV (mean)",
+               color="#43C59E", edgecolor="white", alpha=0.9,
+               yerr=cv_stds, capsize=5, error_kw={"elinewidth": 1.5, "ecolor": "#333"})
+
+for bar in bars1:
+    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.3,
+            f"{bar.get_height():.1f}%", ha="center", va="bottom", fontsize=8, fontweight="bold")
+for bar, std in zip(bars2, cv_stds):
+    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + std + 0.5,
+            f"{bar.get_height():.1f}%", ha="center", va="bottom", fontsize=8, fontweight="bold")
+
+ax.set_xticks(x)
+ax.set_xticklabels(model_names_short, fontsize=10)
+ax.set_ylim(80, 105)
+ax.set_ylabel("Accuracy (%)", fontsize=11)
+ax.set_title("Accuracy: Single Split vs 5-Fold CV", fontsize=11, fontweight="bold")
+ax.legend(fontsize=9)
+
+# Right: box-plot of CV fold scores per model
+ax2 = axes[1]
+cv_data = [cv_results[n] * 100 for n in cv_models]
+bp = ax2.boxplot(cv_data, patch_artist=True, widths=0.4,
+                 medianprops={"color": "white", "linewidth": 2})
+for patch, color in zip(bp["boxes"], PALETTE):
+    patch.set_facecolor(color)
+    patch.set_alpha(0.8)
+for flier in bp["fliers"]:
+    flier.set(marker="o", color="gray", alpha=0.5)
+
+ax2.set_xticks(range(1, 4))
+ax2.set_xticklabels(model_names_short, fontsize=10)
+ax2.set_ylabel("Fold Accuracy (%)", fontsize=11)
+ax2.set_title("Distribution of CV Fold Scores (5 folds)", fontsize=11, fontweight="bold")
+ax2.set_ylim(80, 105)
+
+fig.tight_layout()
+fig.savefig("cross_validation.png", dpi=150)
+plt.close()
+print("  Saved -> cross_validation.png")
+
+
 # -- Final summary ---------------------------------------------
 print("\n" + "=" * 60)
 print("  FINAL SUMMARY")
 print("=" * 60)
-print(f"\n  {'Model':<32} {'Accuracy':>10}")
-print("  " + "-" * 44)
-for name, res in results.items():
-    print(f"  {name:<32} {res['accuracy']*100:>9.2f}%")
+print(f"\n  {'Model':<32} {'Single Split':>13} {'CV Mean':>9} {'CV Std':>8}")
+print("  " + "-" * 66)
+for name in results:
+    single = results[name]["accuracy"] * 100
+    cv_mean = cv_results[name].mean() * 100
+    cv_std  = cv_results[name].std()  * 100
+    print(f"  {name:<32} {single:>12.2f}% {cv_mean:>8.2f}% {cv_std:>7.2f}%")
 print("\n  All plots saved successfully!")
 print("=" * 60)

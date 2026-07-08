@@ -8,7 +8,7 @@
 ![matplotlib](https://img.shields.io/badge/matplotlib-3.x-11557C?style=for-the-badge&logo=matplotlib&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-*A complete supervised machine learning pipeline for classifying Iris flower species using KNN, Decision Tree, and Logistic Regression.*
+*A complete supervised machine learning pipeline for classifying Iris flower species using KNN, Decision Tree, and Logistic Regression — with 5-fold cross-validation.*
 
 </div>
 
@@ -38,6 +38,7 @@ This project implements a full end-to-end machine learning classification pipeli
 - Split data into training and test sets (80/20)
 - Train three classifiers: KNN, Decision Tree, and Logistic Regression
 - Evaluate each model using accuracy scores, classification reports, and confusion matrices
+- Apply **5-fold stratified cross-validation** and compare with single-split results
 - Visualize results and interpret model behaviour
 
 ---
@@ -89,7 +90,8 @@ IrisProject/
     ├── accuracy_comparison.png    # Model accuracy bar chart
     ├── decision_tree.png          # Decision tree structure diagram
     ├── decision_boundaries.png    # 2D decision boundaries (bonus)
-    └── knn_k_selection.png        # KNN hyperparameter tuning plot
+    ├── knn_k_selection.png        # KNN hyperparameter tuning plot
+    └── cross_validation.png       # CV vs single split comparison chart
 ```
 
 ---
@@ -194,21 +196,45 @@ All features were standardized (zero mean, unit variance). This is critical for 
 - **Classification report** — per-class precision, recall, F1-score
 - **Confusion matrix** — breakdown of predictions per class
 
-### Bonus
-- **Decision boundary visualization** using 2 features (petal length & petal width)
-- **KNN hyperparameter tuning** — accuracy plotted for k = 1 to 20
+### 6. Cross-Validation (5-Fold Stratified)
+```python
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.pipeline import Pipeline
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+pipe = Pipeline([
+    ("scaler", StandardScaler()),
+    ("clf",    model),
+])
+scores = cross_val_score(pipe, X, y, cv=cv, scoring="accuracy")
+print(f"CV mean: {scores.mean():.4f} ± {scores.std():.4f}")
+```
+- Each model is wrapped in a **Pipeline** with a `StandardScaler` — this ensures the scaler is re-fitted on each training fold, **preventing data leakage**
+- `StratifiedKFold` preserves the 50/50/50 class balance in every fold
+- Results are compared against the single 80/20 split to assess consistency
 
 ---
 
 ## 📊 Results
 
-All three models achieved **identical accuracy** of **93.33%** on the test set.
+All three models achieved **identical accuracy** of **93.33%** on the single 80/20 test split. Cross-validation reveals consistently higher mean accuracy, confirming the models generalise well.
 
-| Model                    | Test Accuracy | Notes                           |
-|--------------------------|:-------------:|---------------------------------|
-| K-Nearest Neighbors (k=5)| **93.33%**   | 2 misclassifications            |
-| Decision Tree (depth=4)  | **93.33%**   | Interpretable structure         |
-| Logistic Regression      | **93.33%**   | Strong linear separability      |
+| Model                    | Single Split | CV Mean  | CV Std  |
+|--------------------------|:------------:|:--------:|:-------:|
+| K-Nearest Neighbors (k=5)| **93.33%**  | **97.33%** | ±2.49% |
+| Decision Tree (depth=4)  | **93.33%**  | **95.33%** | ±3.40% |
+| Logistic Regression      | **93.33%**  | **95.33%** | ±4.52% |
+
+> **Interpretation:** CV mean scores are 2–4% higher than the single split, suggesting the 80/20 split happened to include a slightly harder test fold. The small standard deviations (2–5%) indicate stable, consistent performance across all folds.
+
+### Individual CV Fold Scores
+
+| Model | Fold 1 | Fold 2 | Fold 3 | Fold 4 | Fold 5 |
+|---|:---:|:---:|:---:|:---:|:---:|
+| KNN (k=5)          | 100% | 96.67% | 93.33% | 100% | 96.67% |
+| Decision Tree      | 100% | 96.67% | 93.33% | 96.67% | 90% |
+| Logistic Regression| 100% | 96.67% | 90%   | 100%  | 90%  |
 
 ### Confusion Matrix Breakdown
 
@@ -243,15 +269,21 @@ Visualizes where each model succeeds and struggles. All models misclassify 2 out
 ### KNN — k Selection (Bonus)
 Test accuracy plotted for k = 1 to 20. The optimal k is found at k = 1–5, with accuracy stabilizing around 93–100%. k=5 offers a good balance between bias and variance.
 
+### Cross-Validation Comparison
+Two side-by-side charts:
+- **Grouped bar chart** — single split accuracy vs. CV mean accuracy (with error bars showing ±1 std deviation) for all three models
+- **Box plot** — distribution of the 5 fold scores per model, showing spread and consistency
+
 ---
 
 ## 🔑 Key Findings
 
-1. **All three classifiers perform equally well** (93.33%) on this dataset, reflecting the dataset's simplicity and clean structure.
-2. **Setosa is trivially separable** — all models classify it with 100% accuracy.
-3. **Petal features are the most discriminative**: petal length and petal width explain most of the variance between species.
-4. **Feature scaling matters**: KNN and Logistic Regression both require standardization; the Decision Tree is scale-invariant but was scaled uniformly for fairness.
-5. The small dataset (150 samples) means all models achieve near-peak performance — further gains would require more data or ensemble methods.
+1. **All three classifiers perform equally well** (93.33% single split, 95–97% CV mean), confirming the dataset's clean and separable structure.
+2. **Cross-validation gives a more reliable estimate**: CV means are 2–4% higher than the single split, and the low standard deviations (±2–5%) confirm stable generalisation.
+3. **Pipeline prevents data leakage**: wrapping the scaler and classifier in a `Pipeline` ensures preprocessing is refitted on each fold's training data — a best practice in production ML.
+4. **Setosa is trivially separable** — all models classify it with 100% accuracy across every fold.
+5. **Petal features are the most discriminative**: petal length and petal width explain most of the variance between species.
+6. **KNN achieved the highest CV accuracy** (97.33%), slightly beating Decision Tree and Logistic Regression (both 95.33%).
 
 ---
 
