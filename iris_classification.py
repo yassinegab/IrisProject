@@ -94,10 +94,27 @@ X_train, X_test, y_train, y_test = train_test_split(
 print(f"\n  Training samples : {X_train.shape[0]}")
 print(f"  Test samples     : {X_test.shape[0]}")
 
-# Feature scaling (important for KNN)
+# Feature scaling (important for KNN and Logistic Regression)
+# Choice: StandardScaler is selected because it standardizes features to have mean=0 and variance=1.
+# Unlike MinMaxScaler, it does not bound values to a specific range, making it less sensitive to
+# extreme values (outliers) and ensuring distance calculations (in KNN) are not dominated by features with larger scales.
+
 scaler = StandardScaler()
 X_train_sc = scaler.fit_transform(X_train)
 X_test_sc  = scaler.transform(X_test)
+
+# Convert to DataFrame for visual comparison head snapshot
+cols = iris.feature_names
+df_before = pd.DataFrame(X_train, columns=cols).head(5)
+df_after  = pd.DataFrame(X_train_sc, columns=cols).head(5)
+
+print("\n  [Feature Scaling - StandardScaler]")
+print("  Why StandardScaler: Standardizes features to mean=0, variance=1. Preserves the shape of the original distribution and performs well with distance-based (KNN) and linear models (Logistic Regression).")
+print("\n  --- Before Scaling (Raw X_train head) ---")
+print(df_before.round(3).to_string(index=False))
+print("\n  --- After Scaling (Standardized X_train_sc head) ---")
+print(df_after.round(3).to_string(index=False))
+
 
 
 # ============================================================

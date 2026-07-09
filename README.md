@@ -176,12 +176,43 @@ X_train, X_test, y_train, y_test = train_test_split(
 - `random_state=42` ensures reproducibility
 
 ### 3. Feature Scaling
-```python
-scaler = StandardScaler()
-X_train_sc = scaler.fit_transform(X_train)
-X_test_sc  = scaler.transform(X_test)
-```
-All features were standardized (zero mean, unit variance). This is critical for distance-based models like KNN.
+
+#### **Why StandardScaler was chosen:**
+`StandardScaler` standardizes the features by subtracting the mean and dividing by the standard deviation:
+$$z = \frac{x - \mu}{\sigma}$$
+This scales each feature to have a mean of $0$ and a standard deviation of $1$. We selected it over `MinMaxScaler` because:
+- **Preserves Outlier Representation**: Unlike MinMaxScaler, which compresses all features strictly into a $[0, 1]$ interval (making it highly sensitive to extreme outliers), StandardScaler preserves the shape of the original distribution.
+- **Optimises Distance & Gradient Computations**: Distance-based models (like **KNN**) are heavily influenced by the absolute scale of features. Scaling ensures that features with larger ranges (e.g., petal length) do not dominate features with smaller ranges (e.g., sepal width). Linear models with regularisation (like **Logistic Regression**) also converge much faster when features are centered and standardized.
+
+#### **Data Snapshot (Before vs. After Scaling)**
+
+##### **Before Scaling (Raw X_train head):**
+| sepal length (cm) | sepal width (cm) | petal length (cm) | petal width (cm) |
+|:---:|:---:|:---:|:---:|
+| 4.4 | 2.9 | 1.4 | 0.2 |
+| 4.9 | 2.5 | 4.5 | 1.7 |
+| 6.8 | 2.8 | 4.8 | 1.4 |
+| 4.9 | 3.1 | 1.5 | 0.1 |
+| 5.5 | 2.5 | 4.0 | 1.3 |
+
+##### **After Scaling (Standardized X_train_sc head):**
+| sepal length (cm) | sepal width (cm) | petal length (cm) | petal width (cm) |
+|:---:|:---:|:---:|:---:|
+| -1.722 | -0.332 | -1.346 | -1.323 |
+| -1.124 | -1.228 | 0.415 | 0.652 |
+| 1.144 | -0.556 | 0.585 | 0.257 |
+| -1.124 | 0.116 | -1.289 | -1.455 |
+| -0.408 | -1.228 | 0.131 | 0.125 |
+
+---
+
+## 🛠️ Process Documentation
+
+Here is a summary of the data quality checks and steps applied during preprocessing:
+- **Raw Data Issues Found**: The raw Iris dataset was inspected for structural issues, missing values, outliers, and scale differences. No missing values or severe outliers were found, but the scale of the features varied substantially (petal length spanned 1.0 to 6.9 cm, while sepal width only spanned 2.0 to 4.4 cm).
+- **Cleaning Steps Applied**: Since the dataset was already clean (0 missing cells), no deletion or imputation steps were required. We verified class balance (perfectly balanced with 50 samples per class) and checked feature correlations to ensure target separation.
+- **Scaling Method Selection**: We applied `StandardScaler` to ensure all features contribute equally to the distance metrics of KNN and help Logistic Regression converge efficiently, choosing it over MinMaxScaler to keep the variance-driven relationships intact without bounding the data artificially.
+
 
 ### 4. Models Trained
 
