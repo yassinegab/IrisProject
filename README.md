@@ -246,8 +246,25 @@ Actual Versicolor  0       9/10        1/0     ← 1 or 0 error
 Actual Virginica   0       1/0         9/10    ← 1 or 0 error
 ```
 
-- **Setosa** is perfectly classified by all models (100% precision & recall)
-- **Versicolor** and **Virginica** show minor confusion with each other — expected due to overlapping feature distributions
+- **Setosa** is perfectly classified by all models (100% precision & recall).
+- **Versicolor** and **Virginica** show minor confusion with each other — expected due to overlapping feature distributions.
+
+### 🧠 Evaluation Metrics & Interpretation
+
+#### **Which metric is most important in this case?**
+- **Macro F1-Score**: Since this dataset is perfectly balanced (equal numbers of Setosa, Versicolor, and Virginica), overall **Accuracy** is highly informative. However, **Macro F1-Score** is the most important metric because it takes the harmonic mean of precision and recall for each class individually and averages them. This ensures that any poor performance on a specific class is not masked by high performance on other classes.
+- **Precision vs. Recall**: 
+  - **Precision** is crucial if false positives are costly (e.g., mislabeling a common flower as a rare, protected species).
+  - **Recall** is crucial if false negatives are costly (e.g., missing a toxic variant). 
+  - In a standard taxonomic context with no single dominant cost, the balanced **F1-Score** represents the best overall measure.
+
+#### **What does the confusion matrix tell you?**
+1. **Linear Separability of Setosa**: All models achieve a perfect score (10/10) for Setosa. There are 0 false positives and 0 false negatives. This proves Setosa is fully distinct from the other two species.
+2. **Boundary Overlap (Versicolor vs. Virginica)**: The confusion matrix exposes the limits of the models:
+   - For **KNN**: 2 Virginica flowers were misclassified as Versicolor.
+   - For **Logistic Regression & Decision Trees**: 1 Versicolor was misclassified as Virginica and 1 Virginica was misclassified as Versicolor.
+   - This indicates that Versicolor and Virginica share overlapping feature profiles, particularly in their petal length and width boundary regions.
+
 - All misclassifications occur at the Versicolor/Virginica boundary
 
 ---
